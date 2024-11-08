@@ -10,7 +10,7 @@ from page_rapports import PageRapport
 class Application:
     def __init__(self, root):
         self.root = root
-        self.root.title("Application de Gestion viticulture")
+        self.root.title("Application de Gestion Viticulture")
         self.root.geometry("1200x800+100+100")
 
         # Frame du menu de navigation
@@ -25,10 +25,11 @@ class Application:
         Button(self.menu_frame, text="Notifications", command=self.show_notifications).pack(side=LEFT, padx=10, pady=5)
         Button(self.menu_frame, text="Rapports", command=self.show_rapports).pack(side=LEFT, padx=10, pady=5)
 
-        # Frame pour chaque page
+        # Instanciation des frames (pages)
         self.acceuil_frame = PageAcceuil(self.root)
-        self.ouvriers_frame = PageOuvriers(self.root)
         self.travaux_frame = PageTravaux(self.root)
+        # Passage de la méthode 'remplir_liste_ouvriers' à 'PageOuvriers' pour mise à jour de la combobox
+        self.ouvriers_frame = PageOuvriers(self.root, self.travaux_frame.remplir_liste_ouvriers)  
         self.operations_frame = PageOperations(self.root)
         self.notifications_frame = PageNotifications(self.root)
         self.rapports_frame = PageRapport(self.root)
