@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import filedialog, messagebox
+from tkinter import ttk  # Importer ttk pour des widgets plus stylisés
 from page_acceuil import PageAcceuil
 from page_ouvriers import PageOuvriers
 from page_travaux import PageTravaux
@@ -12,24 +13,31 @@ class Application:
         self.root = root
         self.root.title("Application de Gestion Viticulture")
         self.root.geometry("1200x800+100+100")
+        
+        # Application d'un thème de base avec ttk
+        style = ttk.Style()
+        style.theme_use("clam")  # Vous pouvez essayer "alt", "clam", "classic", ou un thème personnalisé
 
-        # Frame du menu de navigation
-        self.menu_frame = Frame(self.root, bg="lightgray")
+        # Définir une couleur pour l'ensemble de la fenêtre
+        self.root.configure(bg="#f4f4f4")
+
+        # Frame du menu de navigation avec un fond coloré
+        self.menu_frame = Frame(self.root, bg="#2d3b55")  # Couleur de fond personnalisée
         self.menu_frame.pack(side=TOP, fill=X)
 
-        # Boutons du menu
-        Button(self.menu_frame, text="Accueil", command=self.show_acceuil).pack(side=LEFT, padx=10, pady=5)
-        Button(self.menu_frame, text="Ouvriers", command=self.show_ouvriers).pack(side=LEFT, padx=10, pady=5)
-        Button(self.menu_frame, text="Travaux", command=self.show_travaux).pack(side=LEFT, padx=10, pady=5)
-        Button(self.menu_frame, text="Opérations Phytosanitaires", command=self.show_operations).pack(side=LEFT, padx=10, pady=5)
-        Button(self.menu_frame, text="Notifications", command=self.show_notifications).pack(side=LEFT, padx=10, pady=5)
-        Button(self.menu_frame, text="Rapports", command=self.show_rapports).pack(side=LEFT, padx=10, pady=5)
+        # Boutons du menu avec des couleurs et des polices personnalisées
+        button_style = {"font": ("Arial", 12), "bg": "#4CAF50", "fg": "white", "activebackground": "#45a049", "bd": 0}
+        Button(self.menu_frame, text="Accueil", command=self.show_acceuil, **button_style).pack(side=LEFT, padx=10, pady=5)
+        Button(self.menu_frame, text="Ouvriers", command=self.show_ouvriers, **button_style).pack(side=LEFT, padx=10, pady=5)
+        Button(self.menu_frame, text="Travaux", command=self.show_travaux, **button_style).pack(side=LEFT, padx=10, pady=5)
+        Button(self.menu_frame, text="Opérations Phytosanitaires", command=self.show_operations, **button_style).pack(side=LEFT, padx=10, pady=5)
+        Button(self.menu_frame, text="Notifications", command=self.show_notifications, **button_style).pack(side=LEFT, padx=10, pady=5)
+        Button(self.menu_frame, text="Rapports", command=self.show_rapports, **button_style).pack(side=LEFT, padx=10, pady=5)
 
-        # Instanciation des frames (pages)
+        # Instanciation des pages
         self.acceuil_frame = PageAcceuil(self.root)
         self.travaux_frame = PageTravaux(self.root)
-        # Passage de la méthode 'remplir_liste_ouvriers' à 'PageOuvriers' pour mise à jour de la combobox
-        self.ouvriers_frame = PageOuvriers(self.root, self.travaux_frame.remplir_liste_ouvriers)  
+        self.ouvriers_frame = PageOuvriers(self.root, self.travaux_frame.remplir_liste_ouvriers)
         self.operations_frame = PageOperations(self.root)
         self.notifications_frame = PageNotifications(self.root)
         self.rapports_frame = PageRapport(self.root)

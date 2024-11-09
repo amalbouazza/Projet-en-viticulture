@@ -5,7 +5,8 @@ from database import create_connection  # Assurer l'importation de la fonction d
 class PageOperations(Frame):
     def __init__(self, parent):
         super().__init__(parent)
-        Label(self, text="Gestion des Opérations Phytosanitaires", font=("Arial", 24)).pack(pady=20)
+        self.configure(bg="#f4f4f4")  # Fond gris clair pour la page
+        Label(self, text="Gestion des Opérations Phytosanitaires", font=("Arial", 24), bg="#f4f4f4").pack(pady=20)
 
         # Liste des maladies pour la combobox
         self.maladies = ["Mildiou", "Oïdium", "Botrytis", "Fusariose", "Verticilliose", "Autre"]
@@ -17,30 +18,38 @@ class PageOperations(Frame):
         self.methodes = ["Traitement chimique", "Traitement biologique", "Mécanique", "Autre"]
 
         # Formulaire pour l'ajout d'opérations phytosanitaires
-        Label(self, text="Nom de la Maladie :").pack()
-        self.maladie_combobox = ttk.Combobox(self, values=self.maladies)
-        self.maladie_combobox.pack()
+        self._create_label("Nom de la Maladie :")
+        self.maladie_combobox = self._create_combobox(self.maladies)
 
-        Label(self, text="Stade de la Maladie :").pack()
-        self.stade_combobox = ttk.Combobox(self, values=self.stades)
-        self.stade_combobox.pack()
+        self._create_label("Stade de la Maladie :")
+        self.stade_combobox = self._create_combobox(self.stades)
 
-        Label(self, text="Méthode de Traitement :").pack()
-        self.methode_combobox = ttk.Combobox(self, values=self.methodes)
-        self.methode_combobox.pack()
+        self._create_label("Méthode de Traitement :")
+        self.methode_combobox = self._create_combobox(self.methodes)
 
-        Label(self, text="Observations :").pack()
-        self.observations_entry = Text(self, height=5, width=40)
-        self.observations_entry.pack()
+        self._create_label("Observations :")
+        self.observations_entry = Text(self, height=5, width=40, wrap=WORD, bg="white", font=("Arial", 12))
+        self.observations_entry.pack(pady=10)
 
-        Label(self, text="Sélectionner un Ouvrier :").pack()
-        self.ouvrier_combobox = ttk.Combobox(self)
-        self.ouvrier_combobox.pack()
+        self._create_label("Sélectionner un Ouvrier :")
+        self.ouvrier_combobox = ttk.Combobox(self, state="readonly")
+        self.ouvrier_combobox.pack(pady=10)
 
         # Remplir la liste déroulante avec les ouvriers
         self.remplir_liste_ouvriers()
 
-        Button(self, text="Ajouter Opération", command=self.ajouter_operation).pack(pady=20)
+        # Bouton pour ajouter une opération phytosanitaire
+        Button(self, text="Ajouter Opération", command=self.ajouter_operation, bg="#4CAF50", fg="white", font=("Arial", 12), relief=RAISED).pack(pady=20)
+
+    def _create_label(self, text):
+        """Créer un label stylisé."""
+        Label(self, text=text, font=("Arial", 12), bg="#f4f4f4").pack(pady=5)
+
+    def _create_combobox(self, values):
+        """Créer une combobox avec un fond blanc et une bordure."""
+        combobox = ttk.Combobox(self, values=values, font=("Arial", 12), state="readonly")
+        combobox.pack(pady=5)
+        return combobox
 
     def remplir_liste_ouvriers(self):
         """Remplir la liste déroulante avec les ouvriers de la base de données."""

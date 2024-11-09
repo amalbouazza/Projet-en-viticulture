@@ -11,39 +11,39 @@ from database import create_connection  # Assurez-vous que cette fonction existe
 class PageRapport(Frame):
     def __init__(self, parent):
         super().__init__(parent)
-        self.pack(padx=10, pady=10)
+        self.pack(padx=20, pady=20)
 
-        self.title_label = Label(self, text="Gestion des Travaux Viticoles", font=("Arial", 24))
-        self.title_label.pack(pady=10)
+        # Titre de la page, style uniformisé
+        self.title_label = Label(self, text="Gestion des Travaux Viticoles", font=("Arial", 24, 'bold'), bg="#f0f0f0", anchor="center")
+        self.title_label.pack(pady=20, padx=10, fill='x')  # Centrer le titre
 
-        # Création d'un cadre pour les boutons
+        # Création d'un cadre pour les boutons avec une belle disposition
         self.bouton_frame = Frame(self)
-        self.bouton_frame.pack(pady=10)
+        self.bouton_frame.pack(pady=20, fill='x')
 
-        self.bouton_rapport = Button(self.bouton_frame, text="Rapport Phytosanitaire", command=self.afficher_rapport)
+        self.bouton_rapport = Button(self.bouton_frame, text="Rapport Phytosanitaire", width=20, height=2, font=("Arial", 12), command=self.afficher_rapport)
         self.bouton_rapport.grid(row=0, column=0, padx=10)
 
-        self.bouton_pdf = Button(self.bouton_frame, text="Exporter en PDF", command=self.exporter_pdf)
+        self.bouton_pdf = Button(self.bouton_frame, text="Exporter en PDF", width=20, height=2, font=("Arial", 12), command=self.exporter_pdf)
         self.bouton_pdf.grid(row=0, column=1, padx=10)
 
-        self.bouton_stat = Button(self.bouton_frame, text="Analyse Statistique", command=self.analyser_statistique)
+        self.bouton_stat = Button(self.bouton_frame, text="Analyse Statistique", width=20, height=2, font=("Arial", 12), command=self.analyser_statistique)
         self.bouton_stat.grid(row=0, column=2, padx=10)
 
         # Zone pour afficher les formulaires selon l'option choisie
         self.zone_formulaire = Frame(self)
-        self.zone_formulaire.pack(pady=20)
+        self.zone_formulaire.pack(pady=20, fill='x')
 
     def afficher_rapport(self):
         """Afficher le formulaire pour générer un rapport phytosanitaire"""
-        for widget in self.zone_formulaire.winfo_children():
-            widget.destroy()  # Effacer l'ancienne interface si existante
+        self._clear_zone_formulaire()
 
-        Label(self.zone_formulaire, text="Rapport des Opérations Phytosanitaires", font=("Arial", 18)).pack(pady=10)
+        Label(self.zone_formulaire, text="Rapport des Opérations Phytosanitaires", font=("Arial", 18, 'bold')).pack(pady=10)
 
-        self.rapport_text = scrolledtext.ScrolledText(self.zone_formulaire, height=25, width=100)
+        self.rapport_text = scrolledtext.ScrolledText(self.zone_formulaire, height=25, width=100, wrap=WORD, font=("Arial", 10))
         self.rapport_text.pack(pady=10)
 
-        Button(self.zone_formulaire, text="Générer Rapport", command=self.generer_rapport).pack(pady=10)
+        Button(self.zone_formulaire, text="Générer Rapport", width=20, height=2, font=("Arial", 12), command=self.generer_rapport).pack(pady=10)
 
     def generer_rapport(self):
         """Générer le rapport des opérations phytosanitaires"""
@@ -147,12 +147,11 @@ class PageRapport(Frame):
 
     def analyser_statistique(self):
         """Analyser les durées des travaux avec régression linéaire"""
-        for widget in self.zone_formulaire.winfo_children():
-            widget.destroy()  # Effacer l'ancienne interface si existante
+        self._clear_zone_formulaire()
 
-        Label(self.zone_formulaire, text="Analyse Statistique des Travaux", font=("Arial", 18)).pack(pady=10)
+        Label(self.zone_formulaire, text="Analyse Statistique des Travaux", font=("Arial", 18, 'bold')).pack(pady=10)
 
-        Button(self.zone_formulaire, text="Analyser Durée des Travaux", command=self.analyser_duree).pack(pady=10)
+        Button(self.zone_formulaire, text="Analyser Durée des Travaux", width=20, height=2, font=("Arial", 12), command=self.analyser_duree).pack(pady=10)
 
     def analyser_duree(self):
         """Analyser les durées des travaux avec Machine Learning (Régression linéaire)"""
@@ -181,10 +180,14 @@ class PageRapport(Frame):
             plt.plot(df['ouvrier_id'], model.predict(X), color='red', label='Régression linéaire')
             plt.title("Analyse de la Durée des Travaux")
             plt.xlabel('ID Ouvrier')
-            plt.ylabel
-            plt.ylabel('Durée (heures)')
+            plt.ylabel('Durée (heures)')  # Compléter l'étiquette de l'axe Y
             plt.legend()
             plt.show()
 
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de l'analyse des données : {str(e)}")
+
+    def _clear_zone_formulaire(self):
+        """Effacer tous les widgets dans la zone formulaire"""
+        for widget in self.zone_formulaire.winfo_children():
+            widget.destroy()  # Effacer l'ancienne interface si existante
