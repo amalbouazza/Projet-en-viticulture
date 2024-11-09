@@ -1,5 +1,5 @@
-from tkinter import *
-from tkinter import messagebox, ttk, filedialog
+from tkinter import Frame, Label, Entry, Button, messagebox  # Ajout de Frame et autres widgets nécessaires
+from tkinter import ttk, filedialog
 from tkcalendar import Calendar
 import csv
 from database import create_connection  # Assurez-vous que cette fonction existe et fonctionne correctement
@@ -7,12 +7,39 @@ from database import create_connection  # Assurez-vous que cette fonction existe
 class PageTravaux(Frame):
     def __init__(self, parent):
         super().__init__(parent)
+        self.pack()  # Assurez-vous que le frame est ajouté à l'interface
         Label(self, text="Gestion des Travaux", font=("Arial", 24)).pack(pady=20)
 
         # Formulaire pour l'ajout de travaux
         Label(self, text="Type de Travail :").pack()
-        self.type_entry = Entry(self)
-        self.type_entry.pack()
+        
+        # Liste déroulante pour sélectionner le type de travail
+        self.type_combobox = ttk.Combobox(self, values=[
+            "Taille de la vigne", 
+            "Palissage", 
+            "Traitements phytosanitaires", 
+            "Désherbage", 
+            "Fertilisation", 
+            "Irrigation",
+            "Récolte (Vendange)", 
+            "Pressurage des raisins",
+            "Entretien des équipements agricoles",
+            "Aménagement du sol",
+            "Surveillance de la santé des plantes",
+            "Équilibrage du feuillage",
+            "Préparation de la vigne pour l'hiver",
+            "Travaux de plantation",
+            "Autre"
+        ])
+        self.type_combobox.pack()
+        self.type_combobox.bind("<<ComboboxSelected>>", self.on_type_selected)  # Lier l'événement de sélection à une fonction
+
+        # Zone de texte pour "Autre" type de travail
+        self.other_type_label = Label(self, text="Type de travail (si 'Autre') :")
+        self.other_type_label.pack()
+        self.other_type_entry = Entry(self)
+        self.other_type_entry.pack()
+        self.other_type_entry.pack_forget()  # Cacher la zone de texte par défaut
 
         Label(self, text="Durée (heures) :").pack()
         self.duree_entry = Entry(self)
@@ -34,6 +61,12 @@ class PageTravaux(Frame):
 
         Button(self, text="Importer Travaux depuis Fichier", command=self.importer_travaux).pack(pady=10)
 
+    def on_type_selected(self, event):
+        """Fonction qui gère la sélection de type de travail."""
+        selected_type = self.type_combobox.get()
+        
+       
+
     def remplir_liste_ouvriers(self):
         """Remplir la liste déroulante avec les IDs des ouvriers de la base de données."""
         try:
@@ -49,7 +82,12 @@ class PageTravaux(Frame):
             connection.close()
 
     def ajouter_travail(self):
-        type_travail = self.type_entry.get()
+        type_travail = self.type_combobox.get()  # Récupérer la valeur sélectionnée dans le Combobox
+        
+        # Si le type de travail est "Autre", récupérer la valeur saisie dans la zone de texte
+        if type_travail == "Autre":
+            type_travail = self.other_type_entry.get()
+
         duree = self.duree_entry.get()
         date_travail = self.calendrier.get_date()  # Obtenir la date sélectionnée dans le calendrier
         
@@ -74,11 +112,14 @@ class PageTravaux(Frame):
                 messagebox.showinfo("Succès", f"Travail '{type_travail}' ajouté avec succès")
 
                 # Réinitialiser les champs
-                self.type_entry.delete(0, END)
-                self.duree_entry.delete(0, END)
+                self.type_combobox.set('')  # Réinitialiser la sélection
+                self.duree_entry.delete(0, 'end')
                 self.ouvrier_combobox.set('')  # Réinitialiser la sélection
                 self.calendrier.set_date('')  # Réinitialiser la date sélectionnée
+                self.other_type_entry.delete(0, 'end')  # Réinitialiser la zone de texte
 
+                # Masquer la zone de texte si un autre type est sélectionné
+                self.other_type_entry.pack_forget()
                 # Actualiser la liste des ouvriers dans la combobox après ajout du travail
                 self.remplir_liste_ouvriers()
 
@@ -100,15 +141,21 @@ class PageTravaux(Frame):
                     for row in reader:
                         if len(row) == 4:  # Vérifier que chaque ligne contient les 4 champs attendus
                             type_travail, duree, ouvrier_id, date_travail = row
-                            # Insérer dans la base de données
-                            connection = create_connection()
-                            with connection.cursor() as cursor:
-                                cursor.execute(
-                                    "INSERT INTO travaux (type_travail, duree, ouvrier_id, date_travail) VALUES (%s, %s, %s, %s)",
-                                    (type_travail, duree, ouvrier_id, date_travail)
-                                )
-                            connection.commit()
-                            connection.close()
+                            try:
+                                # Vérifier que la durée est un nombre et la date est au bon format
+                                duree = int(duree)  # S'assurer que la durée est un entier
+                                # Insérer dans la base de données
+                                connection = create_connection()
+                                with connection.cursor() as cursor:
+                                    cursor.execute(
+                                        "INSERT INTO travaux (type_travail, duree, ouvrier_id, date_travail) VALUES (%s, %s, %s, %s)",
+                                        (type_travail, duree, ouvrier_id, date_travail)
+                                    )
+                                connection.commit()
+                            except Exception as e:
+                                messagebox.showerror("Erreur", f"Erreur lors de l'insertion du travail : {str(e)}")
+                            finally:
+                                connection.close()
 
                     messagebox.showinfo("Succès", "Travaux importés avec succès depuis le fichier CSV")
             except Exception as e:
