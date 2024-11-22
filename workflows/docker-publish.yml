@@ -1,0 +1,38 @@
+name: Update the container application python 
+
+on:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      # Étape 1: Configurer QEMU pour le support multi-architecture
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      # Étape 2: Configurer Docker Buildx pour un build multi-architecture
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Étape 3: Se connecter à Docker Hub
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}   # Utilisez vos secrets pour vous connecter à Docker Hub
+          password: ${{ secrets.DOCKERHUB_TOKEN }}      # Assurez-vous d'avoir un token Docker Hub pour l'authentification
+
+      # Étape 4: Vérifier le code source (checkout)
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Étape 5: Construire et pousser l'image Docker
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          context: ./sources                        # Le répertoire contenant votre Dockerfile et le code source
+          file: ./sources/Dockerfile                # Chemin vers le Dockerfile dans le répertoire 'sources'
+          push: true                                # Indique à GitHub Actions de pousser l'image vers Docker Hub après construction
+          tags: namespace/name-repository:1.0.${{ github.run_number }}  # Versionnement avec run_number pour assurer un tag unique à chaque build
