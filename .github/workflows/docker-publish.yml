@@ -1,5 +1,6 @@
 name: Publish Docker Image
 
+
 on:
   push:
     branches:
@@ -22,4 +23,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: true
-          tags: username/repository:tag
+          tags: amalbouazza4430/Projetenviticulture:latest
+          cache-from: type=registry,ref=amalbouazza4430/Projetenviticulture:latest
+          cache-to: type=inline
+
