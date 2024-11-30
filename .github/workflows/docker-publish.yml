@@ -1,0 +1,29 @@
+name: Publish Docker Image
+
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          tags: amalbouazza4430/projetenviticulture:latest
+          cache-from: type=registry,ref=amalbouazza4430/Projetenviticulture:latest
+          cache-to: type=inline
+
