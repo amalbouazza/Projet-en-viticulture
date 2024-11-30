@@ -50,12 +50,10 @@ class PageRapport(Frame):
         try:
             connection = create_connection()
             with connection.cursor() as cursor:
-                cursor.execute("""
-                    SELECT p.maladie, p.stade, p.methode, p.observation, o.nom 
-                    FROM phytosanitaire p
-                    JOIN ouvriers o ON p.ouvrier_id = o.id
-                    ORDER BY p.maladie, p.stade
-                """)
+                cursor.execute("""SELECT p.maladie, p.stade, p.methode, p.observation, o.nom 
+                                  FROM phytosanitaire p
+                                  JOIN ouvriers o ON p.ouvrier_id = o.id
+                                  ORDER BY p.maladie, p.stade""")
                 operations = cursor.fetchall()
 
                 if not operations:
@@ -86,12 +84,10 @@ class PageRapport(Frame):
             if fichier:
                 connection = create_connection()
                 with connection.cursor() as cursor:
-                    cursor.execute("""
-                        SELECT p.maladie, p.stade, p.methode, p.observation, o.nom 
-                        FROM phytosanitaire p
-                        JOIN ouvriers o ON p.ouvrier_id = o.id
-                        ORDER BY p.maladie, p.stade
-                    """)
+                    cursor.execute("""SELECT p.maladie, p.stade, p.methode, p.observation, o.nom 
+                                      FROM phytosanitaire p
+                                      JOIN ouvriers o ON p.ouvrier_id = o.id
+                                      ORDER BY p.maladie, p.stade""")
                     operations = cursor.fetchall()
 
                 if not operations:
@@ -105,7 +101,7 @@ class PageRapport(Frame):
                 c.drawString(100, 750, "Rapport des Opérations Phytosanitaires")
                 c.drawString(100, 735, "-----------------------------------------")
 
-                # En-tête du tableau avec une taille de police plus grande
+                # En-tête du tableau
                 c.setFont("Helvetica-Bold", 10)
                 c.drawString(100, 715, "Maladie")
                 c.drawString(200, 715, "Stade")
@@ -114,21 +110,18 @@ class PageRapport(Frame):
                 c.drawString(500, 715, "Ouvrier")
                 c.setFont("Helvetica", 8)
 
-                # Variable pour la position verticale du texte (lignes du tableau)
+                # Ajouter les lignes du tableau
                 y_position = 700
                 line_height = 12  # Espacement entre les lignes du tableau
 
-                # Ajouter les lignes du tableau
                 for operation in operations:
                     text = f"{operation[0]:<20} | {operation[1]:<10} | {operation[2]:<15} | {operation[3]:<20} | {operation[4]:<15}"
                     c.drawString(100, y_position, text)
                     y_position -= line_height
 
-                    # Si on atteint le bas de la page, on passe à la nouvelle page
                     if y_position < 100:
                         c.showPage()  # Crée une nouvelle page
                         c.setFont("Helvetica", 8)
-                        # En-tête sur la nouvelle page
                         c.drawString(100, 750, "Rapport des Opérations Phytosanitaires")
                         c.drawString(100, 735, "-----------------------------------------")
                         c.setFont("Helvetica-Bold", 10)
@@ -165,22 +158,26 @@ class PageRapport(Frame):
             df = pd.read_sql(query, connection)
             connection.close()
 
-            df['ouvrier_id'] = pd.factorize(df['nom'])[0]
-            df['type_travail_id'] = pd.factorize(df['type_travail'])[0]
+            # Utilisation de l'encodage One-H
+            # Utilisation de l'encodage One-Hot pour les variables catégorielles
+            df = pd.get_dummies(df, columns=['nom', 'type_travail'], drop_first=True)
 
-            X = df[['ouvrier_id', 'type_travail_id']]
-            y = df['duree']
+            X = df.drop('duree', axis=1)  # Variables explicatives
+            y = df['duree']  # Variable cible (durée des travaux)
 
+            # Création du modèle de régression linéaire
             model = LinearRegression()
             model.fit(X, y)
 
             messagebox.showinfo("Analyse", f"Coefficients : {model.coef_}\nIntercept : {model.intercept_}")
 
-            plt.scatter(df['ouvrier_id'], y, color='blue', label='Données réelles')
-            plt.plot(df['ouvrier_id'], model.predict(X), color='red', label='Régression linéaire')
+            # Visualisation des données réelles et de la prédiction du modèle
+            plt.scatter(range(len(y)), y, color='blue', label='Données réelles')
+            plt.plot(range(len(y)), model.predict(X), color='red', label='Régression linéaire')
+
             plt.title("Analyse de la Durée des Travaux")
-            plt.xlabel('ID Ouvrier')
-            plt.ylabel('Durée (heures)')  # Compléter l'étiquette de l'axe Y
+            plt.xlabel('Index des Travaux')
+            plt.ylabel('Durée (heures)')
             plt.legend()
             plt.show()
 

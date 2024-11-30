@@ -4,6 +4,10 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import os
+from dotenv import load_dotenv
+
+# Charger les variables d'environnement depuis le fichier .env
+load_dotenv("notif.env")
 
 class PageNotifications(Frame):
     def __init__(self, parent):
@@ -48,8 +52,8 @@ class PageNotifications(Frame):
                 smtp_port = 587
 
                 # Utilisation des variables d'environnement pour la sécurité
-                smtp_user = os.getenv('SMTP_USER')  # Par exemple, 'your-email@gmail.com'
-                smtp_password = os.getenv('SMTP_PASSWORD')  # Par exemple, 'your-app-password'
+                smtp_user = os.getenv('SMTP_USER')  # Email utilisateur (doit être dans le fichier .env)
+                smtp_password = os.getenv('SMTP_PASSWORD')  # Mot de passe de l'application (doit être dans le fichier .env)
 
                 if not smtp_user or not smtp_password:
                     raise ValueError("Le mot de passe ou l'adresse email n'est pas configuré dans les variables d'environnement.")
@@ -84,4 +88,3 @@ class PageNotifications(Frame):
         else:
             # Si des champs sont vides
             messagebox.showwarning("Erreur", "Veuillez remplir tous les champs requis")
-

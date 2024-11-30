@@ -1,59 +1,42 @@
-from tkinter import *
-from tkcalendar import *
-import pymysql
-from tkinter import ttk, messagebox
+from faker import Faker
+import random
+import csv
 
-class FormMyqsl:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Gestion de viticulture")
-        self.root.geometry("1920x1080+0+0")
-        
-        # Frame pour le menu (barre de navigation)
-        self.menu_frame = Frame(self.root, bg="lightgray")
-        self.menu_frame.pack(side=TOP, fill=X)
-        
-        # Boutons du menu
-        Button(self.menu_frame, text="Accueil", command=self.show_home).pack(side=LEFT, padx=10, pady=5)
-        Button(self.menu_frame, text="Ouvriers", command=self.show_ouvriers).pack(side=LEFT, padx=10, pady=5)
-        Button(self.menu_frame, text="Travaux", command=self.show_travaux).pack(side=LEFT, padx=10, pady=5)
-        Button(self.menu_frame, text="Opérations Phytosanitaires ", command=self.show_travaux).pack(side=LEFT, padx=10, pady=5)
-        Button(self.menu_frame, text="Notifications ", command=self.show_travaux).pack(side=LEFT, padx=10, pady=5)
-        Button(self.menu_frame, text="Rapports ", command=self.show_travaux).pack(side=LEFT, padx=10, pady=5)
+fake = Faker()
 
-        # Création des frames pour chaque page
-        self.home_frame = Frame(self.root)
-        self.ouvriers_frame = Frame(self.root)
-        self.travaux_frame = Frame(self.root)
-        
-        # Affichage de la page d'accueil au démarrage
-        self.show_home()
-    
-    # Méthodes pour afficher chaque page
-    def show_home(self):
-        self.hide_all_frames()
-        self.home_frame.pack(fill="both", expand=1)
-        Label(self.home_frame, text="Bienvenue sur la page d'accueil", font=("Arial", 24)).pack(pady=20)
-    
-    def show_ouvriers(self):
-        self.hide_all_frames()
-        self.ouvriers_frame.pack(fill="both", expand=1)
-        Label(self.ouvriers_frame, text="Gestion des Ouvriers", font=("Arial", 24)).pack(pady=20)
-        # Ajoute ici les widgets pour gérer les ouvriers
-    
-    def show_travaux(self):
-        self.hide_all_frames()
-        self.travaux_frame.pack(fill="both", expand=1)
-        Label(self.travaux_frame, text="Gestion des Travaux", font=("Arial", 24)).pack(pady=20)
-        # Ajoute ici les widgets pour gérer les travaux
-    
-    def hide_all_frames(self):
-        """Cache tous les frames pour ne laisser apparaître que la page demandée"""
-        self.home_frame.pack_forget()
-        self.ouvriers_frame.pack_forget()
-        self.travaux_frame.pack_forget()
+# Liste des types de travail
+types_travail = [
+    "Taille de la vigne", 
+    "Palissage", 
+    "Traitements phytosanitaires", 
+    "Désherbage", 
+    "Fertilisation", 
+    "Irrigation",
+    "Récolte (Vendange)", 
+    "Pressurage des raisins",
+    "Entretien des équipements agricoles",
+    "Aménagement du sol",
+    "Surveillance de la santé des plantes",
+    "Équilibrage du feuillage",
+    "Préparation de la vigne pour l'hiver",
+    "Travaux de plantation",
+    "Autre"
+]
 
-# Lancement de l'application
-root = Tk()
-app = FormMyqsl(root)
-root.mainloop()
+# Création du fichier CSV avec les colonnes spécifiées
+with open("travaux.csv", "w", newline="") as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(["id", "type_travail", "duree", "ouvrier_id", "date_travail"])
+
+    for i in range(100):
+        # Simuler un ouvrier (id unique pour chaque ouvrier)
+        ouvrier_id = random.randint(1, 20)  # Exemple d'ouvriers, ici 20 ouvriers différents
+
+        # Écrire une ligne dans le fichier CSV
+        writer.writerow([
+            i + 1,  # ID (clé primaire, auto-incrémentée)
+            random.choice(types_travail),  # Type de travail choisi parmi la liste
+            random.randint(1, 8),  # Durée du travail (en heures)
+            ouvrier_id,  # Ouvrier ID (clé étrangère)
+            fake.date_between(start_date="-1y", end_date="today")  # Date du travail
+        ])
