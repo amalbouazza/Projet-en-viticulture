@@ -1,14 +1,15 @@
 from tkinter import *
 from tkinter import messagebox, filedialog
-import csv
 from tkinter import ttk
+import csv
 from database import create_connection  # Assurez-vous que cette fonction existe et fonctionne correctement
+
 
 class PageOuvriers(Frame):
     def __init__(self, parent, actualiser_callback):
         super().__init__(parent)
         self.parent = parent
-        self.actualiser_callback = actualiser_callback  # Callback pour actualiser la liste des ouvriers dans PageTravaux
+        self.actualiser_callback = actualiser_callback  # Callback pour actualiser d'autres pages si nécessaire
 
         # Personnalisation de l'interface avec des couleurs de fond et des polices
         self.configure(bg="#f4f4f4")
@@ -27,14 +28,52 @@ class PageOuvriers(Frame):
         self.prenom_entry.pack(pady=5)
 
         # Boutons personnalisés
-        bouton_ajouter = Button(self, text="Ajouter Ouvrier", command=self.ajouter_ouvrier, font=("Arial", 12), bg="#4CAF50", fg="white", relief="raised", bd=2)
-        bouton_ajouter.pack(pady=20)
+        bouton_ajouter = Button(self, text="Ajouter Ouvrier", command=self.ajouter_ouvrier, font=("Arial", 12),
+                                bg="#4CAF50", fg="white", relief="raised", bd=2)
+        bouton_ajouter.pack(pady=10)
 
-        bouton_fichier = Button(self, text="Ajouter Ouvriers via Fichier", command=self.ajouter_ouvriers_fichier, font=("Arial", 12), bg="#008CBA", fg="white", relief="raised", bd=2)
-        bouton_fichier.pack(pady=20)
+        bouton_fichier = Button(self, text="Ajouter Ouvriers via Fichier", command=self.ajouter_ouvriers_fichier,
+                                font=("Arial", 12), bg="#008CBA", fg="white", relief="raised", bd=2)
+        bouton_fichier.pack(pady=10)
+
+        # Tableau pour afficher la liste des ouvriers
+        self.tree = ttk.Treeview(self, columns=("ID", "Nom", "Prénom"), show="headings")
+        self.tree.heading("ID", text="ID")
+        self.tree.heading("Nom", text="Nom")
+        self.tree.heading("Prénom", text="Prénom")
+
+        self.tree.column("ID", width=50, anchor="center")
+        self.tree.column("Nom", width=150, anchor="center")
+        self.tree.column("Prénom", width=150, anchor="center")
+
+        self.tree.pack(pady=20, fill=BOTH, expand=True)
+
+        # Charger la liste des ouvriers au démarrage
+        self.charger_ouvriers()
+
+    def charger_ouvriers(self):
+        """Charger et afficher la liste des ouvriers depuis la base de données."""
+        # Effacer le contenu existant du Treeview
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+
+        try:
+            connection = create_connection()
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT id, nom, prenom FROM ouvriers")
+                rows = cursor.fetchall()
+                # Ajouter chaque ligne dans le Treeview
+                for row in rows:
+                    self.tree.insert("", "end", values=row)
+
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors du chargement des ouvriers : {str(e)}")
+        finally:
+            if connection:
+                connection.close()
 
     def ajouter_ouvrier(self):
-        """Ajouter un ouvrier manuellement dans la base de données"""
+        """Ajouter un ouvrier manuellement dans la base de données."""
         nom = self.nom_entry.get()
         prenom = self.prenom_entry.get()
 
@@ -46,8 +85,8 @@ class PageOuvriers(Frame):
                 connection.commit()  # Valider la transaction
                 messagebox.showinfo("Succès", f"Ouvrier {nom} {prenom} ajouté avec succès")
 
-                # Appel du callback pour actualiser la liste dans la page des Travaux
-                self.actualiser_callback()
+                # Actualiser la liste des ouvriers
+                self.charger_ouvriers()
 
                 # Réinitialiser les champs
                 self.nom_entry.delete(0, END)
@@ -56,55 +95,35 @@ class PageOuvriers(Frame):
             except Exception as e:
                 messagebox.showerror("Erreur", f"Erreur lors de l'ajout de l'ouvrier : {str(e)}")
             finally:
-                connection.close()  # Fermer la connexion
+                if connection:
+                    connection.close()
         else:
             messagebox.showwarning("Erreur", "Veuillez remplir tous les champs")
 
     def ajouter_ouvriers_fichier(self):
-        """Ajouter des ouvriers depuis un fichier CSV"""
-        # Ouvrir un dialogue pour sélectionner le fichier CSV
+        """Ajouter des ouvriers depuis un fichier CSV."""
         fichier = filedialog.askopenfilename(filetypes=[("Fichiers CSV", "*.csv")])
-
         if not fichier:
             return  # Si aucun fichier n'est sélectionné, ne rien faire
 
         try:
-            # Lire le fichier CSV avec le bon séparateur (';')
             with open(fichier, mode='r', newline='', encoding='utf-8') as csvfile:
                 reader = csv.reader(csvfile, delimiter=';')  # Utilisation du séparateur point-virgule
-                next(reader)  # Si le fichier contient une ligne d'entête, la sauter
+                next(reader)  # Sauter l'entête
 
-                # Connexion à la base de données
                 connection = create_connection()
-                if connection is None:
-                    raise Exception("Échec de la connexion à la base de données.")
-
                 with connection.cursor() as cursor:
-                    ouvriers_ajoutes = 0  # Compteur pour les ouvriers ajoutés avec succès
-                    ouvriers_non_valides = 0  # Compteur pour les lignes invalides dans le fichier
                     for row in reader:
-                        if len(row) == 2:  # Vérifier que chaque ligne contient bien 2 colonnes (nom, prénom)
+                        if len(row) == 2:
                             nom, prenom = row
-                            if nom.strip() and prenom.strip():  # Vérifier que les valeurs ne sont pas vides
-                                cursor.execute("INSERT INTO ouvriers (nom, prenom) VALUES (%s, %s)", (nom, prenom))
-                                ouvriers_ajoutes += 1
-                            else:
-                                ouvriers_non_valides += 1
-                        else:
-                            ouvriers_non_valides += 1
+                            cursor.execute("INSERT INTO ouvriers (nom, prenom) VALUES (%s, %s)", (nom, prenom))
+                connection.commit()
 
-                    connection.commit()  # Valider toutes les insertions
-
-            # Message de succès et d'informations
-            messagebox.showinfo("Succès", f"{ouvriers_ajoutes} ouvriers ont été ajoutés avec succès.")
-            if ouvriers_non_valides > 0:
-                messagebox.showwarning("Attention", f"{ouvriers_non_valides} lignes étaient invalides et ont été ignorées.")
-
-            # Appel du callback pour actualiser la liste des ouvriers dans la page Travaux
-            self.actualiser_callback()
+            messagebox.showinfo("Succès", "Les ouvriers ont été ajoutés depuis le fichier.")
+            self.charger_ouvriers()  # Actualiser la liste après ajout
 
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de l'ajout des ouvriers depuis le fichier : {str(e)}")
         finally:
             if connection:
-                connection.close()  # Fermer la connexion à la base de données
+                connection.close()

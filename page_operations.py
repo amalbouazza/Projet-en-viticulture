@@ -8,6 +8,17 @@ class PageOperations(Frame):
         self.configure(bg="#f4f4f4")  # Fond gris clair pour la page
         Label(self, text="Gestion des Opérations Phytosanitaires", font=("Arial", 24), bg="#f4f4f4").pack(pady=20)
 
+        # Conteneur principal pour la mise en page
+        form_frame = Frame(self, bg="#f4f4f4")
+        form_frame.pack(pady=10, padx=20, fill=X)
+
+        # Ajouter des sous-conteneurs pour une disposition en colonnes
+        left_frame = Frame(form_frame, bg="#f4f4f4")
+        left_frame.pack(side=LEFT, padx=10, fill=X, expand=True)
+
+        right_frame = Frame(form_frame, bg="#f4f4f4")
+        right_frame.pack(side=RIGHT, padx=10, fill=X, expand=True)
+
         # Liste des maladies pour la combobox
         self.maladies = ["Mildiou", "Oïdium", "Botrytis", "Fusariose", "Verticilliose", "Autre"]
 
@@ -17,38 +28,58 @@ class PageOperations(Frame):
         # Liste des méthodes de traitement pour la combobox
         self.methodes = ["Traitement chimique", "Traitement biologique", "Mécanique", "Autre"]
 
-        # Formulaire pour l'ajout d'opérations phytosanitaires
-        self._create_label("Nom de la Maladie :")
-        self.maladie_combobox = self._create_combobox(self.maladies)
+        # Colonne gauche
+        self._create_label(left_frame, "Nom de la Maladie :")
+        self.maladie_combobox = self._create_combobox(left_frame, self.maladies)
 
-        self._create_label("Stade de la Maladie :")
-        self.stade_combobox = self._create_combobox(self.stades)
+        self._create_label(left_frame, "Stade de la Maladie :")
+        self.stade_combobox = self._create_combobox(left_frame, self.stades)
 
-        self._create_label("Méthode de Traitement :")
-        self.methode_combobox = self._create_combobox(self.methodes)
+        # Colonne droite
+        self._create_label(right_frame, "Méthode de Traitement :")
+        self.methode_combobox = self._create_combobox(right_frame, self.methodes)
 
-        self._create_label("Observations :")
-        self.observations_entry = Text(self, height=5, width=40, wrap=WORD, bg="white", font=("Arial", 12))
-        self.observations_entry.pack(pady=10)
-
-        self._create_label("Sélectionner un Ouvrier :")
-        self.ouvrier_combobox = ttk.Combobox(self, state="readonly")
-        self.ouvrier_combobox.pack(pady=10)
+        self._create_label(right_frame, "Sélectionner un Ouvrier :")
+        self.ouvrier_combobox = ttk.Combobox(right_frame, state="readonly", font=("Arial", 12))
+        self.ouvrier_combobox.pack(pady=5, fill=X)
 
         # Remplir la liste déroulante avec les ouvriers
         self.remplir_liste_ouvriers()
 
+        # Observations sur toute la largeur
+        self._create_label(self, "Observations :")
+        self.observations_entry = Text(self, height=5, width=60, wrap=WORD, bg="white", font=("Arial", 12))
+        self.observations_entry.pack(pady=10, padx=20)
+
         # Bouton pour ajouter une opération phytosanitaire
         Button(self, text="Ajouter Opération", command=self.ajouter_operation, bg="#4CAF50", fg="white", font=("Arial", 12), relief=RAISED).pack(pady=20)
 
-    def _create_label(self, text):
-        """Créer un label stylisé."""
-        Label(self, text=text, font=("Arial", 12), bg="#f4f4f4").pack(pady=5)
+        # Liste des opérations phytosanitaires
+        self._create_label(self, "Liste des Opérations Phytosanitaires :")
+        self.operations_tree = ttk.Treeview(self, columns=("Maladie", "Stade", "Méthode", "Observations", "Ouvrier"), show="headings", height=10)
+        self.operations_tree.heading("Maladie", text="Maladie")
+        self.operations_tree.heading("Stade", text="Stade")
+        self.operations_tree.heading("Méthode", text="Méthode")
+        self.operations_tree.heading("Observations", text="Observations")
+        self.operations_tree.heading("Ouvrier", text="Ouvrier")
+        self.operations_tree.pack(pady=10, padx=20, fill=BOTH, expand=True)
 
-    def _create_combobox(self, values):
+        # Ajouter une barre de défilement pour la liste
+        scroll = ttk.Scrollbar(self, orient="vertical", command=self.operations_tree.yview)
+        self.operations_tree.configure(yscroll=scroll.set)
+        scroll.pack(side=RIGHT, fill=Y)
+
+        # Charger les opérations existantes dans la liste
+        self.charger_operations()
+
+    def _create_label(self, parent, text):
+        """Créer un label stylisé."""
+        Label(parent, text=text, font=("Arial", 12), bg="#f4f4f4").pack(pady=5, anchor="w")
+
+    def _create_combobox(self, parent, values):
         """Créer une combobox avec un fond blanc et une bordure."""
-        combobox = ttk.Combobox(self, values=values, font=("Arial", 12), state="readonly")
-        combobox.pack(pady=5)
+        combobox = ttk.Combobox(parent, values=values, font=("Arial", 12), state="readonly")
+        combobox.pack(pady=5, fill=X)
         return combobox
 
     def remplir_liste_ouvriers(self):
@@ -69,12 +100,11 @@ class PageOperations(Frame):
         maladie = self.maladie_combobox.get()
         stade = self.stade_combobox.get()
         methode = self.methode_combobox.get()
-        observations = self.observations_entry.get("1.0", END).strip()  # Obtenir le texte du widget Text
-        
-        # Récupérer l'ID de l'ouvrier à partir de la sélection dans la combobox
+        observations = self.observations_entry.get("1.0", END).strip()
+
         selection = self.ouvrier_combobox.get()
         if selection:
-            ouvrier_id = selection.split(' - ')[0]  # Récupérer uniquement l'ID
+            ouvrier_id = selection.split(' - ')[0]
         else:
             ouvrier_id = None
 
@@ -88,15 +118,31 @@ class PageOperations(Frame):
                     )
                 connection.commit()
                 messagebox.showinfo("Succès", f"Opération pour '{maladie}' ajoutée avec succès")
-                # Réinitialiser les champs
+                self.charger_operations()
                 self.maladie_combobox.set('')
                 self.stade_combobox.set('')
                 self.methode_combobox.set('')
-                self.observations_entry.delete("1.0", END)  # Réinitialiser le champ de texte
-                self.ouvrier_combobox.set('')  # Réinitialiser la sélection
+                self.observations_entry.delete("1.0", END)
+                self.ouvrier_combobox.set('')
             except Exception as e:
                 messagebox.showerror("Erreur", f"Erreur lors de l'ajout de l'opération : {str(e)}")
             finally:
                 connection.close()
         else:
             messagebox.showwarning("Erreur", "Veuillez remplir tous les champs requis")
+
+    def charger_operations(self):
+        """Charger les opérations phytosanitaires dans la liste."""
+        try:
+            connection = create_connection()
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT maladie, stade, methode, observation, ouvrier_id FROM phytosanitaire")
+                operations = cursor.fetchall()
+                for row in self.operations_tree.get_children():
+                    self.operations_tree.delete(row)
+                for operation in operations:
+                    self.operations_tree.insert("", END, values=operation)
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors du chargement des opérations : {str(e)}")
+        finally:
+            connection.close()
