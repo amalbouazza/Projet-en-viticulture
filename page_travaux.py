@@ -110,20 +110,34 @@ class PageTravaux(Frame):
             return
         
         try:
+            # Assurez-vous que la durée et l'ID de l'ouvrier sont des valeurs numériques valides
+            duree = float(duree)  # Convertir la durée en float
+            ouvrier_id = ouvrier_id.split(' - ')[0]  # Sépare l'ID du nom, et prend seulement l'ID
+            ouvrier_id = float(ouvrier_id)  # Convertir l'ID en float
+
+            print(f"Donnée de durée: {duree} heures")
+            print(f"Donnée d'ouvrier ID: {ouvrier_id}")
+            
             # Charger le modèle
             with open('ml_models/ml_models/type_travail_model.pkl', 'rb') as model_file:
                 model = pickle.load(model_file)
 
             # Préparer les données pour la prédiction
-            input_data = np.array([[float(duree), float(ouvrier_id.split(' - ')[0])]])  # Ajustez selon vos entrées
+            input_data = np.array([[duree, ouvrier_id]])  # Assurez-vous que c'est un tableau 2D
 
             # Prédire
             prediction = model.predict(input_data)
 
             # Afficher le résultat
             messagebox.showinfo("Prédiction", f"Le type de travail prédit est : {prediction[0]}")
+            print(f"Prédiction réussie : Le type de travail prédit est {prediction[0]}")
+
+        except ValueError as ve:
+            messagebox.showerror("Erreur de Données", f"Erreur de conversion des données : {str(ve)}")
+            print(f"Erreur de conversion des données : {str(ve)}")
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la prédiction : {str(e)}")
+            print(f"Erreur lors de la prédiction : {str(e)}")
 
     def ajouter_travail(self):
         """Ajouter un travail dans la base de données."""
@@ -157,56 +171,54 @@ class PageTravaux(Frame):
                 self.ouvrier_combobox.set('')
                 self.calendrier.set_date('')
                 self.afficher_travaux()
-
             except Exception as e:
                 messagebox.showerror("Erreur", f"Erreur lors de l'ajout du travail : {str(e)}")
             finally:
                 connection.close()
         else:
-            messagebox.showwarning("Erreur", "Veuillez remplir tous les champs")
+            messagebox.showwarning("Erreur", "Veuillez remplir tous les champs.")
 
     def afficher_travaux(self):
-        """Afficher tous les travaux dans le Treeview."""
+        """Afficher les travaux dans la table."""
         for row in self.tree.get_children():
             self.tree.delete(row)
-        
+
         try:
             connection = create_connection()
             with connection.cursor() as cursor:
-                cursor.execute("SELECT t.id, t.type_travail, t.duree, o.nom, t.date_travail FROM travaux t JOIN ouvriers o ON t.ouvrier_id = o.id")
+                cursor.execute("SELECT id, type_travail, duree, ouvrier_id, date_travail FROM travaux")
                 travaux = cursor.fetchall()
-                
+
                 for travail in travaux:
                     self.tree.insert("", "end", values=travail)
         except Exception as e:
-            messagebox.showerror("Erreur", f"Erreur lors de l'affichage des travaux : {str(e)}")
+            messagebox.showerror("Erreur", f"Erreur lors de la récupération des travaux : {str(e)}")
         finally:
             connection.close()
 
     def importer_travaux(self):
         """Importer les travaux depuis un fichier CSV."""
-        fichier = filedialog.askopenfilename(title="Sélectionner un fichier CSV", filetypes=[("CSV Files", "*.csv")])
+        fichier = filedialog.askopenfilename(filetypes=[("Fichiers CSV", "*.csv")])
         if fichier:
             try:
-                with open(fichier, newline='', encoding='utf-8') as f:
-                    reader = csv.reader(f)
+                with open(fichier, newline='', encoding='utf-8') as csvfile:
+                    reader = csv.reader(csvfile)
+                    next(reader)  # Ignorer l'en-tête
                     for row in reader:
-                        if len(row) == 4:  # Assurez-vous que chaque ligne a 4 valeurs : type_travail, duree, ouvrier_id, date_travail
-                            type_travail, duree, ouvrier_id, date_travail = row
-                            try:
-                                connection = create_connection()
-                                with connection.cursor() as cursor:
-                                    cursor.execute(
-                                        "INSERT INTO travaux (type_travail, duree, ouvrier_id, date_travail) VALUES (%s, %s, %s, %s)",
-                                        (type_travail, duree, ouvrier_id, date_travail)
-                                    )
-                                connection.commit()
-                            except Exception as e:
-                                messagebox.showerror("Erreur", f"Erreur lors de l'importation des travaux : {str(e)}")
-                            finally:
-                                connection.close()
-                    # Rafraîchir la liste des travaux affichée après l'importation
-                    self.afficher_travaux()
-                messagebox.showinfo("Succès", "Travaux importés avec succès depuis le fichier CSV.")
+                        try:
+                            # Ajouter chaque ligne à la base de données
+                            connection = create_connection()
+                            with connection.cursor() as cursor:
+                                cursor.execute(
+                                    "INSERT INTO travaux (type_travail, duree, ouvrier_id, date_travail) VALUES (%s, %s, %s, %s)",
+                                    (row[0], row[1], row[2], row[3])
+                                )
+                            connection.commit()
+                        except Exception as e:
+                            print(f"Erreur lors de l'ajout du travail {row} : {str(e)}")
+                        finally:
+                            connection.close()
+                messagebox.showinfo("Succès", "Travaux importés avec succès.")
+                self.afficher_travaux()
             except Exception as e:
-                messagebox.showerror("Erreur", f"Erreur lors de l'ouverture du fichier : {str(e)}")
+                messagebox.showerror("Erreur", f"Erreur lors de l'importation : {str(e)}")
