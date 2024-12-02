@@ -2,18 +2,15 @@ from tkinter import Frame, Label, Entry, Button, messagebox
 from tkinter import ttk, filedialog
 from tkcalendar import Calendar
 import csv
-import joblib  # Pour charger le modèle ML
-from database import create_connection  # Assurez-vous que cette fonction existe et fonctionne correctement
-
+from database import create_connection
+import pickle
+import numpy as np
 
 class PageTravaux(Frame):
     def __init__(self, parent):
         super().__init__(parent)
-        self.pack(padx=10, pady=10)  # Ajout d'un espacement général autour du frame
-        self.configure(bg="#f4f4f4")  # Fond de la page
-
-        # Charger le modèle ML
-        self.model = joblib.load("ml_models/ml_models/type_travail_model.pkl")  # Remplacez par le chemin réel de votre modèle
+        self.pack(padx=10, pady=10)
+        self.configure(bg="#f4f4f4")
 
         # Titre
         title_label = Label(self, text="Gestion des Travaux", font=("Arial", 24, "bold"), bg="#f4f4f4", fg="#333333")
@@ -23,16 +20,16 @@ class PageTravaux(Frame):
         form_frame = Frame(self, bg="#f4f4f4")
         form_frame.pack(pady=10)
 
-        # Type de Travail et Durée
+        # Type de Travail et Durée sur la même ligne
         Label(form_frame, text="Type de Travail :", font=("Arial", 14), bg="#f4f4f4").grid(row=0, column=0, padx=(0, 20), pady=5)
         self.type_combobox = ttk.Combobox(form_frame, values=[
-            "Taille de la vigne",
-            "Palissage",
-            "Traitements phytosanitaires",
-            "Désherbage",
-            "Fertilisation",
+            "Taille de la vigne", 
+            "Palissage", 
+            "Traitements phytosanitaires", 
+            "Désherbage", 
+            "Fertilisation", 
             "Irrigation",
-            "Récolte (Vendange)",
+            "Récolte (Vendange)", 
             "Pressurage des raisins",
             "Entretien des équipements agricoles",
             "Aménagement du sol",
@@ -48,7 +45,7 @@ class PageTravaux(Frame):
         self.duree_entry = Entry(form_frame, font=("Arial", 12), relief="solid", bd=1, width=30, bg="#ffffff")
         self.duree_entry.grid(row=1, column=1, pady=5)
 
-        # Ouvrier et Date du travail
+        # Ouvrier et Date du travail sur la même ligne
         Label(form_frame, text="ID de l'Ouvrier :", font=("Arial", 14), bg="#f4f4f4").grid(row=2, column=0, pady=5)
         self.ouvrier_combobox = ttk.Combobox(form_frame, font=("Arial", 12))
         self.ouvrier_combobox.grid(row=2, column=1, pady=5)
@@ -60,19 +57,21 @@ class PageTravaux(Frame):
         self.calendrier = Calendar(form_frame, selectmode='day', date_pattern='yyyy-mm-dd')
         self.calendrier.grid(row=3, column=1, pady=10)
 
-        # Boutons
+        # Boutons personnalisés
         bouton_frame = Frame(self, bg="#f4f4f4")
         bouton_frame.pack(pady=(10, 5))
 
-        bouton_ajouter = Button(bouton_frame, text="Ajouter Travail", command=self.ajouter_travail, font=("Arial", 12),
-                                bg="#4CAF50", fg="white", relief="raised", bd=2)
+        bouton_ajouter = Button(bouton_frame, text="Ajouter Travail", command=self.ajouter_travail, font=("Arial", 12), bg="#4CAF50", fg="white", relief="raised", bd=2)
         bouton_ajouter.grid(row=0, column=0, padx=10)
 
-        bouton_importer = Button(bouton_frame, text="Importer Travaux depuis Fichier", command=self.importer_travaux,
-                                 font=("Arial", 12), bg="#008CBA", fg="white", relief="raised", bd=2)
+        bouton_importer = Button(bouton_frame, text="Importer Travaux depuis Fichier", command=self.importer_travaux, font=("Arial", 12), bg="#008CBA", fg="white", relief="raised", bd=2)
         bouton_importer.grid(row=0, column=1, padx=10)
 
-        # Table des travaux
+        # Bouton de prédiction
+        bouton_predire = Button(bouton_frame, text="Prédire Type de Travail", command=self.predire_type_travail, font=("Arial", 12), bg="#FFC107", fg="white", relief="raised", bd=2)
+        bouton_predire.grid(row=0, column=2, padx=10)
+
+        # Table pour afficher les travaux
         self.tree = ttk.Treeview(self, columns=("ID", "Type", "Durée", "Ouvrier", "Date"), show="headings", height=8)
         self.tree.pack(pady=(20, 10))
 
@@ -83,29 +82,8 @@ class PageTravaux(Frame):
         self.tree.heading("Ouvrier", text="Ouvrier")
         self.tree.heading("Date", text="Date du Travail")
 
-        # Afficher les travaux existants
+        # Remplir la table avec les travaux existants
         self.afficher_travaux()
-
-        # Section Prédiction
-        Label(self, text="Prédire le Type de Travail", font=("Arial", 18, "bold"), bg="#f4f4f4", fg="#333333").pack(pady=(20, 10))
-
-        predict_frame = Frame(self, bg="#f4f4f4")
-        predict_frame.pack(pady=10)
-
-        Label(predict_frame, text="ID de l'Ouvrier :", font=("Arial", 14), bg="#f4f4f4").grid(row=0, column=0, pady=5, padx=10)
-        self.predict_ouvrier = ttk.Combobox(predict_frame, font=("Arial", 12))
-        self.predict_ouvrier.grid(row=0, column=1, pady=5)
-
-        Label(predict_frame, text="Durée (heures) :", font=("Arial", 14), bg="#f4f4f4").grid(row=1, column=0, pady=5, padx=10)
-        self.predict_duree = Entry(predict_frame, font=("Arial", 12), relief="solid", bd=1, width=20)
-        self.predict_duree.grid(row=1, column=1, pady=5)
-
-        Label(predict_frame, text="Date (YYYY-MM-DD) :", font=("Arial", 14), bg="#f4f4f4").grid(row=2, column=0, pady=5, padx=10)
-        self.predict_date = Entry(predict_frame, font=("Arial", 12), relief="solid", bd=1, width=20)
-        self.predict_date.grid(row=2, column=1, pady=5)
-
-        Button(predict_frame, text="Prédire", command=self.predire_travail, font=("Arial", 12), bg="#FF5722", fg="white",
-               relief="raised", bd=2).grid(row=3, column=0, columnspan=2, pady=20)
 
     def remplir_liste_ouvriers(self):
         """Remplir la liste déroulante avec les ouvriers de la base de données."""
@@ -114,46 +92,121 @@ class PageTravaux(Frame):
             with connection.cursor() as cursor:
                 cursor.execute("SELECT id, nom FROM ouvriers")
                 ouvriers = cursor.fetchall()
+                # Ajouter les ouvriers dans la combobox
                 self.ouvrier_combobox['values'] = [f"{ouvrier[0]} - {ouvrier[1]}" for ouvrier in ouvriers]
-                self.predict_ouvrier['values'] = [f"{ouvrier[0]} - {ouvrier[1]}" for ouvrier in ouvriers]
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la récupération des ouvriers : {str(e)}")
         finally:
             connection.close()
 
+    def predire_type_travail(self):
+        """Effectuer une prédiction du type de travail."""
+        # Obtenez les données saisies par l'utilisateur
+        duree = self.duree_entry.get()
+        ouvrier_id = self.ouvrier_combobox.get()
+        
+        if not duree or not ouvrier_id:
+            messagebox.showwarning("Erreur", "Veuillez remplir tous les champs pour prédire.")
+            return
+        
+        try:
+            # Charger le modèle
+            with open('ml_models/ml_models/type_travail_model.pkl', 'rb') as model_file:
+                model = pickle.load(model_file)
+
+            # Préparer les données pour la prédiction
+            input_data = np.array([[float(duree), float(ouvrier_id.split(' - ')[0])]])  # Ajustez selon vos entrées
+
+            # Prédire
+            prediction = model.predict(input_data)
+
+            # Afficher le résultat
+            messagebox.showinfo("Prédiction", f"Le type de travail prédit est : {prediction[0]}")
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors de la prédiction : {str(e)}")
+
     def ajouter_travail(self):
         """Ajouter un travail dans la base de données."""
-        # Logique de l'ajout inchangée...
-        pass
+        type_travail = self.type_combobox.get()
+        
+        if type_travail == "Autre":
+            type_travail = self.other_type_entry.get()
+
+        duree = self.duree_entry.get()
+        date_travail = self.calendrier.get_date()
+        
+        # Récupérer l'ID de l'ouvrier
+        selection = self.ouvrier_combobox.get()
+        if selection:
+            ouvrier_id = selection.split(' - ')[0]
+        else:
+            ouvrier_id = None
+
+        if type_travail and duree and ouvrier_id and date_travail:
+            try:
+                connection = create_connection()
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        "INSERT INTO travaux (type_travail, duree, ouvrier_id, date_travail) VALUES (%s, %s, %s, %s)",
+                        (type_travail, duree, ouvrier_id, date_travail)
+                    )
+                connection.commit()
+                messagebox.showinfo("Succès", f"Travail '{type_travail}' ajouté avec succès")
+                self.type_combobox.set('')
+                self.duree_entry.delete(0, 'end')
+                self.ouvrier_combobox.set('')
+                self.calendrier.set_date('')
+                self.afficher_travaux()
+
+            except Exception as e:
+                messagebox.showerror("Erreur", f"Erreur lors de l'ajout du travail : {str(e)}")
+            finally:
+                connection.close()
+        else:
+            messagebox.showwarning("Erreur", "Veuillez remplir tous les champs")
 
     def afficher_travaux(self):
         """Afficher tous les travaux dans le Treeview."""
-        # Logique inchangée...
-        pass
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+        
+        try:
+            connection = create_connection()
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT t.id, t.type_travail, t.duree, o.nom, t.date_travail FROM travaux t JOIN ouvriers o ON t.ouvrier_id = o.id")
+                travaux = cursor.fetchall()
+                
+                for travail in travaux:
+                    self.tree.insert("", "end", values=travail)
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors de l'affichage des travaux : {str(e)}")
+        finally:
+            connection.close()
 
     def importer_travaux(self):
         """Importer les travaux depuis un fichier CSV."""
-        # Logique inchangée...
-        pass
-
-    def predire_travail(self):
-        """Prédire le type de travail."""
-        try:
-            selection = self.predict_ouvrier.get()
-            ouvrier_id = selection.split(' - ')[0] if selection else None
-            duree = self.predict_duree.get()
-            date_travail = self.predict_date.get()
-
-            if not (ouvrier_id and duree and date_travail):
-                messagebox.showwarning("Erreur", "Veuillez remplir tous les champs pour effectuer une prédiction.")
-                return
-
-            # Formatage des données
-            data = [[int(ouvrier_id), float(duree)]]
-
-            # Prédiction
-            prediction = self.model.predict(data)
-
-            messagebox.showinfo("Résultat de la Prédiction", f"Type de travail prédit : {prediction[0]}")
-        except Exception as e:
-            messagebox.showerror("Erreur", f"Erreur lors de la prédiction : {str(e)}")
+        fichier = filedialog.askopenfilename(title="Sélectionner un fichier CSV", filetypes=[("CSV Files", "*.csv")])
+        if fichier:
+            try:
+                with open(fichier, newline='', encoding='utf-8') as f:
+                    reader = csv.reader(f)
+                    for row in reader:
+                        if len(row) == 4:  # Assurez-vous que chaque ligne a 4 valeurs : type_travail, duree, ouvrier_id, date_travail
+                            type_travail, duree, ouvrier_id, date_travail = row
+                            try:
+                                connection = create_connection()
+                                with connection.cursor() as cursor:
+                                    cursor.execute(
+                                        "INSERT INTO travaux (type_travail, duree, ouvrier_id, date_travail) VALUES (%s, %s, %s, %s)",
+                                        (type_travail, duree, ouvrier_id, date_travail)
+                                    )
+                                connection.commit()
+                            except Exception as e:
+                                messagebox.showerror("Erreur", f"Erreur lors de l'importation des travaux : {str(e)}")
+                            finally:
+                                connection.close()
+                    # Rafraîchir la liste des travaux affichée après l'importation
+                    self.afficher_travaux()
+                messagebox.showinfo("Succès", "Travaux importés avec succès depuis le fichier CSV.")
+            except Exception as e:
+                messagebox.showerror("Erreur", f"Erreur lors de l'ouverture du fichier : {str(e)}")

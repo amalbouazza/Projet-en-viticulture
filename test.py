@@ -1,42 +1,51 @@
-from faker import Faker
 import random
-import csv
+import mysql.connector
+from datetime import datetime, timedelta
 
-fake = Faker()
+# Remplacez les informations par les vôtres
+def create_connection():
+    return mysql.connector.connect(
+        host="127.0.0.1",  # Adresse de votre serveur MySQL (localhost)
+        port="3306",        # Port de connexion (3306 est par défaut pour MySQL)
+        database="viticulture",  # Remplacez par le nom de votre base de données
+        user="root",              # Remplacez par votre utilisateur MySQL
+        password=""  # Ajoutez ici le mot de passe
+    )
 
-# Liste des types de travail
-types_travail = [
-    "Taille de la vigne", 
-    "Palissage", 
-    "Traitements phytosanitaires", 
-    "Désherbage", 
-    "Fertilisation", 
-    "Irrigation",
-    "Récolte (Vendange)", 
-    "Pressurage des raisins",
-    "Entretien des équipements agricoles",
-    "Aménagement du sol",
-    "Surveillance de la santé des plantes",
-    "Équilibrage du feuillage",
-    "Préparation de la vigne pour l'hiver",
-    "Travaux de plantation",
-    "Autre"
-]
+def generate_random_date(start_date="2024-12-01", end_date="2024-12-31"):
+    start = datetime.strptime(start_date, "%Y-%m-%d")
+    end = datetime.strptime(end_date, "%Y-%m-%d")
+    delta = end - start
+    random_days = random.randint(0, delta.days)
+    return (start + timedelta(days=random_days)).strftime('%Y-%m-%d')
 
-# Création du fichier CSV avec les colonnes spécifiées
-with open("travaux.csv", "w", newline="") as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(["id", "type_travail", "duree", "ouvrier_id", "date_travail"])
+def insert_travaux(num_entries):
+    connection = create_connection()
+    cursor = connection.cursor()
 
-    for i in range(100):
-        # Simuler un ouvrier (id unique pour chaque ouvrier)
-        ouvrier_id = random.randint(1, 20)  # Exemple d'ouvriers, ici 20 ouvriers différents
+    types_travaux = [
+        'Taille de la vigne', 'Palissage', 'Traitements phytosanitaires', 
+        'Désherbage', 'Fertilisation', 'Irrigation', 'Récolte (Vendange)', 
+        'Pressurage des raisins', 'Entretien des équipements agricoles', 
+        'Aménagement du sol', 'Surveillance de la santé des plantes', 
+        'Équilibrage du feuillage', 'Préparation de la vigne pour l\'hiver', 
+        'Travaux de plantation', 'Autre'
+    ]
+    
+    for _ in range(num_entries):
+        type_travail = random.choice(types_travaux)
+        duree = round(random.uniform(2, 8), 2)  # Durée aléatoire entre 2 et 8 heures
+        ouvrier_id = random.randint(1, 30)  # Assurez-vous d'avoir des ouvriers avec ces IDs
+        date_travail = generate_random_date()
 
-        # Écrire une ligne dans le fichier CSV
-        writer.writerow([
-            i + 1,  # ID (clé primaire, auto-incrémentée)
-            random.choice(types_travail),  # Type de travail choisi parmi la liste
-            random.randint(1, 8),  # Durée du travail (en heures)
-            ouvrier_id,  # Ouvrier ID (clé étrangère)
-            fake.date_between(start_date="-1y", end_date="today")  # Date du travail
-        ])
+        cursor.execute(
+            "INSERT INTO travaux (type_travail, duree, ouvrier_id, date_travail) VALUES (%s, %s, %s, %s)",
+            (type_travail, duree, ouvrier_id, date_travail)
+        )
+
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+# Insérer 200 travaux
+insert_travaux(200)
