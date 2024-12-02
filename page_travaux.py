@@ -13,7 +13,7 @@ class PageTravaux(Frame):
         self.configure(bg="#f4f4f4")  # Fond de la page
 
         # Charger le modèle ML
-        self.model = joblib.load("model_travail.pkl")  # Remplacez par le chemin réel de votre modèle
+        self.model = joblib.load("ml_models/ml_models/type_travail_model.pkl")  # Remplacez par le chemin réel de votre modèle
 
         # Titre
         title_label = Label(self, text="Gestion des Travaux", font=("Arial", 24, "bold"), bg="#f4f4f4", fg="#333333")

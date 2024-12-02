@@ -1,4 +1,3 @@
-# train_model.py
 import pymysql
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -40,7 +39,8 @@ def preprocess_data(data):
 
 # 3. Entraîner le modèle
 def train_model(X_train, y_train):
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    model = RandomForestClassifier(n_estimators=200, max_depth=50, random_state=42, class_weight='balanced')  # Ajout de max_depth et class_weight
+   
     model.fit(X_train, y_train)
     return model
 
@@ -53,7 +53,7 @@ def save_model(model, filename="ml_models/type_travail_model.pkl"):
 def evaluate_model(model, X_test, y_test):
     y_pred = model.predict(X_test)
     print("Rapport de classification :")
-    print(classification_report(y_test, y_pred))
+    print(classification_report(y_test, y_pred, zero_division=1))  # Ajout de zero_division=1
 
 # Pipeline principal
 if __name__ == "__main__":
