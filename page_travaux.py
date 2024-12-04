@@ -5,6 +5,7 @@ import csv
 from database import create_connection
 import pickle
 import numpy as np
+from datetime import datetime
 
 class PageTravaux(Frame):
     def __init__(self, parent):
@@ -22,7 +23,7 @@ class PageTravaux(Frame):
 
         # Type de Travail et Durée sur la même ligne
         Label(form_frame, text="Type de Travail :", font=("Arial", 14), bg="#f4f4f4").grid(row=0, column=0, padx=(0, 20), pady=5)
-        self.type_combobox = ttk.Combobox(form_frame, values=[
+        self.type_combobox = ttk.Combobox(form_frame, values=[ 
             "Taille de la vigne", 
             "Palissage", 
             "Traitements phytosanitaires", 
@@ -104,33 +105,63 @@ class PageTravaux(Frame):
         # Obtenez les données saisies par l'utilisateur
         duree = self.duree_entry.get()
         ouvrier_id = self.ouvrier_combobox.get()
-        
-        if not duree or not ouvrier_id:
+        type_travail = self.type_combobox.get()  # Ajout du type de travail
+        date_travail = self.calendrier.get_date()  # Ajout de la date du travail
+
+        if not duree or not ouvrier_id or not type_travail or not date_travail:
             messagebox.showwarning("Erreur", "Veuillez remplir tous les champs pour prédire.")
             return
         
         try:
             # Assurez-vous que la durée et l'ID de l'ouvrier sont des valeurs numériques valides
             duree = float(duree)  # Convertir la durée en float
-            ouvrier_id = ouvrier_id.split(' - ')[0]  # Sépare l'ID du nom, et prend seulement l'ID
+            ouvrier_id = ouvrier_id.split(' - ')[0]  # Séparer l'ID du nom et prendre seulement l'ID
             ouvrier_id = float(ouvrier_id)  # Convertir l'ID en float
+
+            # Convertir le type de travail et la date en valeurs numériques
+            type_travail_num = self.convertir_type_travail_en_num(type_travail)
+            date_travail_num = self.convertir_date_en_nombre(date_travail)
 
             print(f"Donnée de durée: {duree} heures")
             print(f"Donnée d'ouvrier ID: {ouvrier_id}")
-            
+            print(f"Donnée type de travail: {type_travail}")
+            print(f"Donnée de date: {date_travail}")
+
             # Charger le modèle
             with open('ml_models/ml_models/type_travail_model.pkl', 'rb') as model_file:
                 model = pickle.load(model_file)
 
-            # Préparer les données pour la prédiction
-            input_data = np.array([[duree, ouvrier_id]])  # Assurez-vous que c'est un tableau 2D
+            # Préparer les données pour la prédiction (4 caractéristiques)
+            input_data = np.array([[duree, ouvrier_id, type_travail_num, date_travail_num]])
 
             # Prédire
             prediction = model.predict(input_data)
 
+            # Dictionnaire de correspondance entre l'index et le type de travail
+            mapping = {
+                0: "Taille de la vigne",
+                1: "Palissage",
+                2: "Traitements phytosanitaires",
+                3: "Désherbage",
+                4: "Fertilisation",
+                5: "Irrigation",
+                6: "Récolte (Vendange)",
+                7: "Pressurage des raisins",
+                8: "Entretien des équipements agricoles",
+                9: "Aménagement du sol",
+                10: "Surveillance de la santé des plantes",
+                11: "Équilibrage du feuillage",
+                12: "Préparation de la vigne pour l'hiver",
+                13: "Travaux de plantation",
+                14: "Autre"
+            }
+
+            # Récupérer le type de travail prédit
+            predicted_type = mapping.get(prediction[0], "Inconnu")
+
             # Afficher le résultat
-            messagebox.showinfo("Prédiction", f"Le type de travail prédit est : {prediction[0]}")
-            print(f"Prédiction réussie : Le type de travail prédit est {prediction[0]}")
+            messagebox.showinfo("Prédiction", f"Le type de travail prédit est : {predicted_type}")
+            print(f"Prédiction réussie : Le type de travail prédit est {predicted_type}")
 
         except ValueError as ve:
             messagebox.showerror("Erreur de Données", f"Erreur de conversion des données : {str(ve)}")
@@ -139,86 +170,105 @@ class PageTravaux(Frame):
             messagebox.showerror("Erreur", f"Erreur lors de la prédiction : {str(e)}")
             print(f"Erreur lors de la prédiction : {str(e)}")
 
-    def ajouter_travail(self):
-        """Ajouter un travail dans la base de données."""
-        type_travail = self.type_combobox.get()
-        
-        if type_travail == "Autre":
-            type_travail = self.other_type_entry.get()
+    def convertir_type_travail_en_num(self, type_travail):
+        """Convertir le type de travail en un nombre pour le modèle."""
+        mapping = {
+            "Taille de la vigne": 0,
+            "Palissage": 1,
+            "Traitements phytosanitaires": 2,
+            "Désherbage": 3,
+            "Fertilisation": 4,
+            "Irrigation": 5,
+            "Récolte (Vendange)": 6,
+            "Pressurage des raisins": 7,
+            "Entretien des équipements agricoles": 8,
+            "Aménagement du sol": 9,
+            "Surveillance de la santé des plantes": 10,
+            "Équilibrage du feuillage": 11,
+            "Préparation de la vigne pour l'hiver": 12,
+            "Travaux de plantation": 13,
+            "Autre": 14
+        }
+        return mapping.get(type_travail, -1)  # Retourne -1 si le type n'est pas trouvé
 
-        duree = self.duree_entry.get()
-        date_travail = self.calendrier.get_date()
-        
-        # Récupérer l'ID de l'ouvrier
-        selection = self.ouvrier_combobox.get()
-        if selection:
-            ouvrier_id = selection.split(' - ')[0]
-        else:
-            ouvrier_id = None
-
-        if type_travail and duree and ouvrier_id and date_travail:
-            try:
-                connection = create_connection()
-                with connection.cursor() as cursor:
-                    cursor.execute(
-                        "INSERT INTO travaux (type_travail, duree, ouvrier_id, date_travail) VALUES (%s, %s, %s, %s)",
-                        (type_travail, duree, ouvrier_id, date_travail)
-                    )
-                connection.commit()
-                messagebox.showinfo("Succès", f"Travail '{type_travail}' ajouté avec succès")
-                self.type_combobox.set('')
-                self.duree_entry.delete(0, 'end')
-                self.ouvrier_combobox.set('')
-                self.calendrier.set_date('')
-                self.afficher_travaux()
-            except Exception as e:
-                messagebox.showerror("Erreur", f"Erreur lors de l'ajout du travail : {str(e)}")
-            finally:
-                connection.close()
-        else:
-            messagebox.showwarning("Erreur", "Veuillez remplir tous les champs.")
+    def convertir_date_en_nombre(self, date_travail):
+        """Convertir la date du travail en nombre de jours depuis une date de référence."""
+        reference_date = datetime(2020, 1, 1)  # Choisissez une date de référence
+        travail_date = datetime.strptime(date_travail, "%Y-%m-%d")
+        delta = travail_date - reference_date
+        return delta.days
 
     def afficher_travaux(self):
-        """Afficher les travaux dans la table."""
-        for row in self.tree.get_children():
-            self.tree.delete(row)
-
+        """Afficher les travaux enregistrés dans le tableau."""
         try:
             connection = create_connection()
             with connection.cursor() as cursor:
-                cursor.execute("SELECT id, type_travail, duree, ouvrier_id, date_travail FROM travaux")
+                cursor.execute("SELECT * FROM travaux")
                 travaux = cursor.fetchall()
-
-                for travail in travaux:
-                    self.tree.insert("", "end", values=travail)
+                for row in travaux:
+                    self.tree.insert("", "end", values=row)
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la récupération des travaux : {str(e)}")
         finally:
             connection.close()
 
+    def ajouter_travail(self):
+        """Ajouter un travail à la base de données.""" 
+        duree = self.duree_entry.get() 
+        ouvrier_id = self.ouvrier_combobox.get() 
+        type_travail = self.type_combobox.get() 
+        date_travail = self.calendrier.get_date() 
+
+        if not duree or not ouvrier_id or not type_travail or not date_travail: 
+            messagebox.showwarning("Erreur", "Veuillez remplir tous les champs.") 
+            return 
+        
+        try: 
+            duree = float(duree) 
+            ouvrier_id = ouvrier_id.split(' - ')[0] 
+            ouvrier_id = int(ouvrier_id) 
+
+            connection = create_connection() 
+            with connection.cursor() as cursor: 
+                cursor.execute( 
+                    "INSERT INTO travaux (type_travail, duree, ouvrier_id, date_travail) VALUES (%s, %s, %s, %s)", 
+                    (type_travail, duree, ouvrier_id, date_travail) 
+                ) 
+                connection.commit() 
+                messagebox.showinfo("Succès", "Travail ajouté avec succès.") 
+                self.afficher_travaux() 
+        except Exception as e: 
+            messagebox.showerror("Erreur", f"Erreur lors de l'ajout du travail : {str(e)}") 
+        finally: 
+            connection.close()
+
     def importer_travaux(self):
-        """Importer les travaux depuis un fichier CSV."""
-        fichier = filedialog.askopenfilename(filetypes=[("Fichiers CSV", "*.csv")])
-        if fichier:
-            try:
-                with open(fichier, newline='', encoding='utf-8') as csvfile:
-                    reader = csv.reader(csvfile)
-                    next(reader)  # Ignorer l'en-tête
-                    for row in reader:
-                        try:
-                            # Ajouter chaque ligne à la base de données
-                            connection = create_connection()
-                            with connection.cursor() as cursor:
-                                cursor.execute(
-                                    "INSERT INTO travaux (type_travail, duree, ouvrier_id, date_travail) VALUES (%s, %s, %s, %s)",
-                                    (row[0], row[1], row[2], row[3])
-                                )
-                            connection.commit()
-                        except Exception as e:
-                            print(f"Erreur lors de l'ajout du travail {row} : {str(e)}")
-                        finally:
-                            connection.close()
-                messagebox.showinfo("Succès", "Travaux importés avec succès.")
-                self.afficher_travaux()
-            except Exception as e:
-                messagebox.showerror("Erreur", f"Erreur lors de l'importation : {str(e)}")
+        """Importer les travaux depuis un fichier CSV.""" 
+        file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")]) 
+        if not file_path: 
+            return 
+        try: 
+            with open(file_path, newline='', encoding="utf-8") as file: 
+                reader = csv.reader(file) 
+                for row in reader: 
+                    if row: 
+                        self.ajouter_travail_depuis_csv(row) 
+            messagebox.showinfo("Succès", "Travaux importés avec succès.") 
+            self.afficher_travaux() 
+        except Exception as e: 
+            messagebox.showerror("Erreur", f"Erreur lors de l'importation : {str(e)}") 
+
+    def ajouter_travail_depuis_csv(self, row): 
+        """Ajouter un travail à la base de données depuis un fichier CSV.""" 
+        try: 
+            connection = create_connection() 
+            with connection.cursor() as cursor: 
+                cursor.execute( 
+                    "INSERT INTO travaux (type_travail, duree, ouvrier_id, date_travail) VALUES (%s, %s, %s, %s)", 
+                    (row[0], row[1], row[2], row[3]) 
+                ) 
+                connection.commit() 
+        except Exception as e: 
+            print(f"Erreur lors de l'ajout du travail depuis CSV : {str(e)}") 
+        finally: 
+            connection.close()

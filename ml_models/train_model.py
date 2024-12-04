@@ -56,7 +56,7 @@ def train_model(X_train, y_train):
     return model
 
 # 4. Sauvegarder le modèle
-def save_model(model, filename="ml_models/ml_models/type_travail_model.pkl"):
+def save_model(model, filename="ml_models/type_travail_model.pkl"):
     joblib.dump(model, filename)
     print(f"Modèle sauvegardé sous : {filename}")
 

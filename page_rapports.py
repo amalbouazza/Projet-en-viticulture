@@ -75,7 +75,8 @@ class PageRapport(Frame):
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la génération du rapport : {str(e)}")
         finally:
-            connection.close()
+            if connection:
+                connection.close()
 
     def exporter_pdf(self):
         """Exporter les données en PDF sous forme de tableau avec gestion de la mise en page"""
@@ -110,9 +111,9 @@ class PageRapport(Frame):
                 c.drawString(500, 715, "Ouvrier")
                 c.setFont("Helvetica", 8)
 
-                # Ajouter les lignes du tableau
+                # Ajouter les lignes du tableau avec espacement amélioré
                 y_position = 700
-                line_height = 12  # Espacement entre les lignes du tableau
+                line_height = 15  # Espacement entre les lignes du tableau
 
                 for operation in operations:
                     text = f"{operation[0]:<20} | {operation[1]:<10} | {operation[2]:<15} | {operation[3]:<20} | {operation[4]:<15}"
@@ -158,7 +159,6 @@ class PageRapport(Frame):
             df = pd.read_sql(query, connection)
             connection.close()
 
-            # Utilisation de l'encodage One-H
             # Utilisation de l'encodage One-Hot pour les variables catégorielles
             df = pd.get_dummies(df, columns=['nom', 'type_travail'], drop_first=True)
 
