@@ -1,11 +1,13 @@
 from tkinter import Frame, Label, Entry, Button, messagebox
-from tkinter import ttk, filedialog
+from tkinter import ttk, filedialog, scrolledtext
 from tkcalendar import Calendar
 import csv
 from database import create_connection
 import pickle
 import numpy as np
 from datetime import datetime
+import pandas as pd
+import matplotlib.pyplot as plt
 
 class PageTravaux(Frame):
     def __init__(self, parent):
@@ -72,6 +74,10 @@ class PageTravaux(Frame):
         bouton_predire = Button(bouton_frame, text="Prédire Type de Travail", command=self.predire_type_travail, font=("Arial", 12), bg="#FFC107", fg="white", relief="raised", bd=2)
         bouton_predire.grid(row=0, column=2, padx=10)
 
+        # Bouton pour afficher les rapports
+        bouton_rapport = Button(bouton_frame, text="Afficher Rapports", command=self.afficher_rapport, font=("Arial", 12), bg="#FF5722", fg="white", relief="raised", bd=2)
+        bouton_rapport.grid(row=0, column=3, padx=10)
+
         # Table pour afficher les travaux
         self.tree = ttk.Treeview(self, columns=("ID", "Type", "Durée", "Ouvrier", "Date"), show="headings", height=8)
         self.tree.pack(pady=(20, 10))
@@ -122,11 +128,6 @@ class PageTravaux(Frame):
             type_travail_num = self.convertir_type_travail_en_num(type_travail)
             date_travail_num = self.convertir_date_en_nombre(date_travail)
 
-            print(f"Donnée de durée: {duree} heures")
-            print(f"Donnée d'ouvrier ID: {ouvrier_id}")
-            print(f"Donnée type de travail: {type_travail}")
-            print(f"Donnée de date: {date_travail}")
-
             # Charger le modèle
             with open('ml_models/ml_models/type_travail_model.pkl', 'rb') as model_file:
                 model = pickle.load(model_file)
@@ -163,15 +164,84 @@ class PageTravaux(Frame):
             messagebox.showinfo("Prédiction", f"Le type de travail prédit est : {predicted_type}")
             print(f"Prédiction réussie : Le type de travail prédit est {predicted_type}")
 
-        except ValueError as ve:
-            messagebox.showerror("Erreur de Données", f"Erreur de conversion des données : {str(ve)}")
-            print(f"Erreur de conversion des données : {str(ve)}")
+            # Enregistrer les résultats dans un fichier CSV
+            with open('predictions.csv', mode='a', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                writer.writerow([duree, ouvrier_id, predicted_type, date_travail])
+
+        except ValueError:
+            messagebox.showerror("Erreur", "La durée et l'ID de l'ouvrier doivent être des nombres valides.")
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la prédiction : {str(e)}")
-            print(f"Erreur lors de la prédiction : {str(e)}")
+
+    def afficher_travaux(self):
+        """Afficher tous les travaux dans la table."""
+        try:
+            connection = create_connection()
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT * FROM travaux")
+                travaux = cursor.fetchall()
+                # Remplir la table avec les travaux
+                for travail in travaux:
+                    self.tree.insert("", "end", values=travail)
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors de l'affichage des travaux : {str(e)}")
+        finally:
+            connection.close()
+
+    def afficher_rapport(self):
+        """Afficher un graphique basé sur les données du fichier CSV."""
+        try:
+            # Lire le fichier CSV contenant les travaux
+            df = pd.read_csv('predictions.csv', names=["Durée", "ID_Ouvrier", "Type_Travail", "Date"])
+
+            # Créer un graphique pour afficher la durée du travail par type de travail
+            fig, ax = plt.subplots(figsize=(10, 6))
+            
+            # Grouper par type de travail et sommer les durées
+            graphique_data = df.groupby("Type_Travail")["Durée"].sum().sort_values()
+
+            # Créer un graphique à barres
+            graphique_data.plot(kind='barh', ax=ax, color='skyblue')
+
+            # Ajouter des labels et un titre
+            ax.set_xlabel("Durée Totale (heures)")
+            ax.set_ylabel("Type de Travail")
+            ax.set_title("Durée Totale des Travaux par Type")
+
+            # Afficher le graphique
+            plt.tight_layout()
+            plt.show()
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors de l'affichage du graphique : {str(e)}")
+
+    def importer_travaux(self):
+        """Importer les travaux depuis un fichier CSV."""
+        file_path = filedialog.askopenfilename(filetypes=[("Fichiers CSV", "*.csv")])
+        if file_path:
+            try:
+                with open(file_path, mode='r', encoding='utf-8') as file:
+                    reader = csv.reader(file)
+                    for row in reader:
+                        # Ajouter les données dans la base de données
+                        self.ajouter_travail(row)
+            except Exception as e:
+                messagebox.showerror("Erreur", f"Erreur lors de l'importation des travaux : {str(e)}")
+
+    def ajouter_travail(self, travail_data):
+        """Ajouter un travail dans la base de données."""
+        try:
+            connection = create_connection()
+            with connection.cursor() as cursor:
+                cursor.execute("INSERT INTO travaux (type_travail, duree, ouvrier_id, date_travail) VALUES (%s, %s, %s, %s)", travail_data)
+                connection.commit()
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors de l'ajout du travail : {str(e)}")
+        finally:
+            connection.close()
 
     def convertir_type_travail_en_num(self, type_travail):
-        """Convertir le type de travail en un nombre pour le modèle."""
+        """Convertir le type de travail en valeur numérique."""
         mapping = {
             "Taille de la vigne": 0,
             "Palissage": 1,
@@ -189,86 +259,14 @@ class PageTravaux(Frame):
             "Travaux de plantation": 13,
             "Autre": 14
         }
-        return mapping.get(type_travail, -1)  # Retourne -1 si le type n'est pas trouvé
+        return mapping.get(type_travail, -1)
 
-    def convertir_date_en_nombre(self, date_travail):
-        """Convertir la date du travail en nombre de jours depuis une date de référence."""
-        reference_date = datetime(2020, 1, 1)  # Choisissez une date de référence
-        travail_date = datetime.strptime(date_travail, "%Y-%m-%d")
-        delta = travail_date - reference_date
-        return delta.days
-
-    def afficher_travaux(self):
-        """Afficher les travaux enregistrés dans le tableau."""
+    def convertir_date_en_nombre(self, date_str):
+        """Convertir une date (yyyy-mm-dd) en un nombre."""
         try:
-            connection = create_connection()
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT * FROM travaux")
-                travaux = cursor.fetchall()
-                for row in travaux:
-                    self.tree.insert("", "end", values=row)
-        except Exception as e:
-            messagebox.showerror("Erreur", f"Erreur lors de la récupération des travaux : {str(e)}")
-        finally:
-            connection.close()
-
-    def ajouter_travail(self):
-        """Ajouter un travail à la base de données.""" 
-        duree = self.duree_entry.get() 
-        ouvrier_id = self.ouvrier_combobox.get() 
-        type_travail = self.type_combobox.get() 
-        date_travail = self.calendrier.get_date() 
-
-        if not duree or not ouvrier_id or not type_travail or not date_travail: 
-            messagebox.showwarning("Erreur", "Veuillez remplir tous les champs.") 
-            return 
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+            return int(date_obj.strftime('%Y%m%d'))  # Exemple de conversion
+        except ValueError:
+            return 0  # Si la date est invalide
         
-        try: 
-            duree = float(duree) 
-            ouvrier_id = ouvrier_id.split(' - ')[0] 
-            ouvrier_id = int(ouvrier_id) 
 
-            connection = create_connection() 
-            with connection.cursor() as cursor: 
-                cursor.execute( 
-                    "INSERT INTO travaux (type_travail, duree, ouvrier_id, date_travail) VALUES (%s, %s, %s, %s)", 
-                    (type_travail, duree, ouvrier_id, date_travail) 
-                ) 
-                connection.commit() 
-                messagebox.showinfo("Succès", "Travail ajouté avec succès.") 
-                self.afficher_travaux() 
-        except Exception as e: 
-            messagebox.showerror("Erreur", f"Erreur lors de l'ajout du travail : {str(e)}") 
-        finally: 
-            connection.close()
-
-    def importer_travaux(self):
-        """Importer les travaux depuis un fichier CSV.""" 
-        file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")]) 
-        if not file_path: 
-            return 
-        try: 
-            with open(file_path, newline='', encoding="utf-8") as file: 
-                reader = csv.reader(file) 
-                for row in reader: 
-                    if row: 
-                        self.ajouter_travail_depuis_csv(row) 
-            messagebox.showinfo("Succès", "Travaux importés avec succès.") 
-            self.afficher_travaux() 
-        except Exception as e: 
-            messagebox.showerror("Erreur", f"Erreur lors de l'importation : {str(e)}") 
-
-    def ajouter_travail_depuis_csv(self, row): 
-        """Ajouter un travail à la base de données depuis un fichier CSV.""" 
-        try: 
-            connection = create_connection() 
-            with connection.cursor() as cursor: 
-                cursor.execute( 
-                    "INSERT INTO travaux (type_travail, duree, ouvrier_id, date_travail) VALUES (%s, %s, %s, %s)", 
-                    (row[0], row[1], row[2], row[3]) 
-                ) 
-                connection.commit() 
-        except Exception as e: 
-            print(f"Erreur lors de l'ajout du travail depuis CSV : {str(e)}") 
-        finally: 
-            connection.close()
