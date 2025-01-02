@@ -34,6 +34,11 @@ class PageRapport(Frame):
         self.zone_formulaire = Frame(self)
         self.zone_formulaire.pack(pady=20, fill='x')
 
+    def _clear_zone_formulaire(self):
+        """Efface le contenu de la zone de formulaire avant d'afficher une nouvelle section"""
+        for widget in self.zone_formulaire.winfo_children():
+            widget.destroy()
+
     def afficher_rapport(self):
         """Affiche le formulaire pour générer un rapport phytosanitaire"""
         self._clear_zone_formulaire()
@@ -125,7 +130,7 @@ class PageRapport(Frame):
                     data.append(line)
 
                 # Insérer les lignes dans le PDF
-                y_position = 680
+                y_position = 1000
                 line_height = 15  # Hauteur de ligne entre les lignes
                 for line in data:
                     c.drawString(100, y_position, line)
@@ -171,33 +176,29 @@ class PageRapport(Frame):
             df = pd.read_sql(query, connection)
             connection.close()
 
-            # Utiliser l'encodage One-Hot pour les variables catégorielles
+            if df.empty:
+                messagebox.showinfo("Aucune donnée", "Aucune donnée trouvée pour l'analyse.")
+                return
+
             df = pd.get_dummies(df, columns=['nom', 'type_travail'], drop_first=True)
+            X = df.drop('duree', axis=1)
+            y = df['duree']
 
-            X = df.drop('duree', axis=1)  # Variables indépendantes
-            y = df['duree']  # Variable dépendante (durée des travaux)
-
-            # Créer un modèle de régression linéaire
             model = LinearRegression()
             model.fit(X, y)
 
             messagebox.showinfo("Analyse", f"Coefficients : {model.coef_}\nIntercept : {model.intercept_}")
 
-            # Tracer les données réelles et la prédiction du modèle
-            # Tracer les données réelles et la prédiction du modèle
             plt.figure(figsize=(10, 6))
-            plt.scatter(y, model.predict(X), color='blue', label='Prédictions')
+            y_pred = model.predict(X)
+            plt.scatter(y, y_pred, color='blue', label='Durées prédites', alpha=0.7)
             plt.plot([y.min(), y.max()], [y.min(), y.max()], color='red', lw=2, label='Ligne de Régression')
             plt.xlabel('Durée réelle')
             plt.ylabel('Durée prédite')
-            plt.title('Analyse de la durée des travaux')
+            plt.title('Analyse de la durée des travaux (Régression linéaire)')
             plt.legend()
+            plt.grid(True)
             plt.show()
 
         except Exception as e:
             messagebox.showerror("Erreur d'Analyse", f"Erreur lors de l'analyse des durées : {str(e)}")
-
-    def _clear_zone_formulaire(self):
-        """Efface le contenu de la zone de formulaire avant d'afficher une nouvelle section"""
-        for widget in self.zone_formulaire.winfo_children():
-            widget.destroy()
